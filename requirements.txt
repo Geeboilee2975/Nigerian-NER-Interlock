@@ -2,7 +2,7 @@ streamlit
 PyPDF2
 pandas
 trafilatura
-speech_recognition
+SpeechRecognition
 gTTS
 transformers
 torch
