@@ -3,7 +3,7 @@ __pycache__/
 env/
 venv/
 
-# AI Model weights (They are too big for standard Git)
+# AI Model weights (STILL IGNORE THESE - they are too big)
 *.bin
 *.safetensors
 *.pth
@@ -11,7 +11,10 @@ venv/
 # Temporary System Files
 temp_speech.mp3
 ner_log.csv
-.DS_Store
 
-# Large Datasets
-nigerian_txt_datasets/
+# nigerian_txt_datasets/  <-- REMOVED OR COMMENTED OUT TO ALLOW PUSH
+
+git add .gitattributes
+git add model.safetensors  # Replace with your actual filename
+git commit -m "Deployment: Adding neural weights via Git LFS"
+git push origin main
