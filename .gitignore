@@ -1,0 +1,17 @@
+# Python environment
+__pycache__/
+env/
+venv/
+
+# AI Model weights (They are too big for standard Git)
+*.bin
+*.safetensors
+*.pth
+
+# Temporary System Files
+temp_speech.mp3
+ner_log.csv
+.DS_Store
+
+# Large Datasets
+nigerian_txt_datasets/
