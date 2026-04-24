@@ -6,5 +6,7 @@ SpeechRecognition
 gTTS
 transformers
 torch
+torchvision
+torchaudio
 streamlit-mic-recorder
 pydub
