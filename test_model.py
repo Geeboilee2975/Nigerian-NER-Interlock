@@ -19,9 +19,12 @@ st.markdown("### **Electronic & Computer Engineering - Neural Phonetic Interface
 @st.cache_resource 
 def load_nigerian_model():
     try:
-        model_dir = "./" 
-        tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True)
-        model = AutoModelForTokenClassification.from_pretrained(model_dir, local_files_only=True)
+        # POINT TO YOUR HUGGING FACE REPO HERE
+        repo_id = "gbolahan219/Nigerian-NER-Model" 
+        
+        tokenizer = AutoTokenizer.from_pretrained(repo_id)
+        model = AutoModelForTokenClassification.from_pretrained(repo_id)
+        
         return pipeline("ner", model=model, tokenizer=tokenizer, aggregation_strategy="simple")
     except Exception as e:
         st.error(f"❌ System Load Error: {e}")
