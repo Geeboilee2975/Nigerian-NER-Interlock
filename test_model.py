@@ -8,8 +8,9 @@ import trafilatura
 import speech_recognition as sr  
 from gtts import gTTS 
 import base64
-import io  # New import for audio handling
-from streamlit_mic_recorder import mic_recorder # New import for web-voice
+import io  
+from pydub import AudioSegment  # NEW: For audio transcoding
+from streamlit_mic_recorder import mic_recorder 
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
 
 # 1. PAGE SETUP
@@ -79,13 +80,12 @@ enable_voice_feedback = st.sidebar.checkbox("Enable Neural Read-Out", value=True
 if 'voice_data' not in st.session_state: st.session_state['voice_data'] = ""
 final_input = ""
 
-# --- 6. INPUT AREA (UPDATED FOR CLOUD DEPLOYMENT) ---
+# --- 6. INPUT AREA (TRANSCODING ENABLED) ---
 st.divider()
 if upload_method == "Voice Command":
     st.subheader("🎤 Voice-to-Interlock Ingestion")
-    st.info("Click the button below and speak. Your voice will be processed by the neural engine.")
+    st.info("Click the button and speak. The system will transcode and process your voice signal.")
     
-    # NEW WEB-BASED MIC RECORDER
     audio_file = mic_recorder(
         start_prompt="🔴 Start Recording",
         stop_prompt="⏹️ Stop & Process",
@@ -93,19 +93,27 @@ if upload_method == "Voice Command":
     )
 
     if audio_file:
-        # Convert web audio buffer to stream for speech_recognition
-        audio_stream = io.BytesIO(audio_file['bytes'])
-        r = sr.Recognizer()
-        with sr.AudioFile(audio_stream) as source:
-            try:
+        try:
+            # 1. Load raw bytes from browser
+            audio_stream = io.BytesIO(audio_file['bytes'])
+            
+            # 2. Transcode WebM/Ogg to WAV using pydub
+            audio_segment = AudioSegment.from_file(audio_stream)
+            wav_io = io.BytesIO()
+            audio_segment.export(wav_io, format="wav")
+            wav_io.seek(0)
+            
+            # 3. Use SpeechRecognition on the transcoded WAV
+            r = sr.Recognizer()
+            with sr.AudioFile(wav_io) as source:
                 audio_data = r.record(source)
                 st.session_state['voice_data'] = r.recognize_google(audio_data)
-                st.success("✅ Voice Signal Captured!")
-            except Exception as e:
-                st.error(f"Linguistic Signal Loss: {e}")
+                st.success("✅ Voice Signal Transcoded Successfully!")
+        except Exception as e:
+            st.error(f"Signal Transcoding Error: {e}")
                 
     if st.session_state['voice_data']:
-        final_input = st.text_area("Recognized Speech (You can edit if needed):", value=st.session_state['voice_data'])
+        final_input = st.text_area("Recognized Speech:", value=st.session_state['voice_data'])
 
 elif upload_method == "Web URL Scraper":
     st.subheader("🌐 Web Intelligence Ingestion")
