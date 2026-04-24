@@ -6,8 +6,10 @@ import PyPDF2
 import pandas as pd
 import trafilatura  
 import speech_recognition as sr  
-from gtts import gTTS  
+from gtts import gTTS 
 import base64
+import io  # New import for audio handling
+from streamlit_mic_recorder import mic_recorder # New import for web-voice
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
 
 # 1. PAGE SETUP
@@ -19,12 +21,9 @@ st.markdown("### **Electronic & Computer Engineering - Neural Phonetic Interface
 @st.cache_resource 
 def load_nigerian_model():
     try:
-        # POINT TO YOUR HUGGING FACE REPO HERE
         repo_id = "gbolahan219/Nigerian-NER-Model" 
-        
         tokenizer = AutoTokenizer.from_pretrained(repo_id)
         model = AutoModelForTokenClassification.from_pretrained(repo_id)
-        
         return pipeline("ner", model=model, tokenizer=tokenizer, aggregation_strategy="simple")
     except Exception as e:
         st.error(f"❌ System Load Error: {e}")
@@ -80,22 +79,33 @@ enable_voice_feedback = st.sidebar.checkbox("Enable Neural Read-Out", value=True
 if 'voice_data' not in st.session_state: st.session_state['voice_data'] = ""
 final_input = ""
 
-# --- 6. INPUT AREA ---
+# --- 6. INPUT AREA (UPDATED FOR CLOUD DEPLOYMENT) ---
 st.divider()
 if upload_method == "Voice Command":
     st.subheader("🎤 Voice-to-Interlock Ingestion")
-    if st.button("🔴 START MICROPHONE"):
+    st.info("Click the button below and speak. Your voice will be processed by the neural engine.")
+    
+    # NEW WEB-BASED MIC RECORDER
+    audio_file = mic_recorder(
+        start_prompt="🔴 Start Recording",
+        stop_prompt="⏹️ Stop & Process",
+        key='web_recorder'
+    )
+
+    if audio_file:
+        # Convert web audio buffer to stream for speech_recognition
+        audio_stream = io.BytesIO(audio_file['bytes'])
         r = sr.Recognizer()
-        with sr.Microphone() as source:
-            st.write("Listening...")
+        with sr.AudioFile(audio_stream) as source:
             try:
-                r.adjust_for_ambient_noise(source, duration=0.5)
-                audio = r.listen(source, timeout=5)
-                st.session_state['voice_data'] = r.recognize_google(audio)
-                st.success("✅ Captured!")
-            except Exception as e: st.error(f"Hardware Error: {e}")
+                audio_data = r.record(source)
+                st.session_state['voice_data'] = r.recognize_google(audio_data)
+                st.success("✅ Voice Signal Captured!")
+            except Exception as e:
+                st.error(f"Linguistic Signal Loss: {e}")
+                
     if st.session_state['voice_data']:
-        final_input = st.session_state['voice_data']
+        final_input = st.text_area("Recognized Speech (You can edit if needed):", value=st.session_state['voice_data'])
 
 elif upload_method == "Web URL Scraper":
     st.subheader("🌐 Web Intelligence Ingestion")
@@ -119,7 +129,6 @@ else:
     st.subheader("✍️ Manual Text Input")
     lang_section = st.selectbox("Language Section:", ["Manual Input", "Nigerian Pidgin", "Yoruba", "Igbo", "Hausa"])
     
-    # Static manual samples - restricted to single sentences as requested
     samples = {
         "Nigerian Pidgin": "Obi buy 50 bags of rice for Lagos last week inside Nigeria.",
         "Yoruba": "Ojo kọrin 'Ojumo Re' ni Eko ninu oṣu kejila.",
@@ -163,7 +172,6 @@ if final_input:
                     grid_html += f'<div style="background-color:{cfg["color"]}; color:white; padding:5px 12px; border-radius:15px; font-weight:bold; border:1px solid white; font-size: 0.8rem;">{cfg["name"]}: {entity["word"]}</div>'
                 st.markdown(grid_html + '</div>', unsafe_allow_html=True)
                 
-                # Visual spacing for graphs
                 st.markdown("<br><br>", unsafe_allow_html=True) 
                 st.divider()
                 
