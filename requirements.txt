@@ -6,3 +6,4 @@ SpeechRecognition
 gTTS
 transformers
 torch
+streamlit-mic-recorder
