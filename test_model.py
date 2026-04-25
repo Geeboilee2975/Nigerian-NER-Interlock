@@ -79,12 +79,11 @@ enable_voice_feedback = st.sidebar.checkbox("Enable Neural Read-Out", value=True
 if 'voice_data' not in st.session_state: st.session_state['voice_data'] = ""
 final_input = ""
 
-# --- 6. INPUT AREA (MULTILINGUAL EDGE PROCESSING) ---
+# --- 6. INPUT AREA (MULTILINGUAL EDGE PROCESSING WITH TITLE-CASE NORMALIZATION) ---
 st.divider()
 if upload_method == "Voice Command":
     st.subheader("🎤 Multilingual Voice-to-Interlock Ingestion")
     
-    # NEW: Dialect Selector for the Voice Engine
     dialect = st.selectbox("Select Voice Dialect for Recognition:", [
         "English (Nigeria)", 
         "Yoruba", 
@@ -93,7 +92,6 @@ if upload_method == "Voice Command":
         "Nigerian Pidgin"
     ])
     
-    # Mapping dialects to BCP-47 Language Tags
     lang_map = {
         "English (Nigeria)": "en-NG",
         "Yoruba": "yo-NG",
@@ -105,7 +103,6 @@ if upload_method == "Voice Command":
     selected_lang = lang_map[dialect]
     st.info(f"Acoustic Engine calibrated for: **{dialect}** ({selected_lang})")
     
-    # Browser-native speech recognition with dynamic language switching
     text_captured = speech_to_text(
         language=selected_lang, 
         start_prompt=f"🔴 Speak in {dialect}",
@@ -114,8 +111,10 @@ if upload_method == "Voice Command":
     )
 
     if text_captured:
-        st.session_state['voice_data'] = text_captured
-        st.success(f"✅ {dialect} Signal Decoded!")
+        # NORMALIZATION LAYER: Convert to Title Case to assist the NER Model in recognizing Proper Nouns
+        normalized_text = text_captured.title()
+        st.session_state['voice_data'] = normalized_text
+        st.success(f"✅ {dialect} Signal Decoded & Normalized!")
                 
     if st.session_state['voice_data']:
         final_input = st.text_area("Recognized Speech Signal:", value=st.session_state['voice_data'])
