@@ -9,6 +9,7 @@ import speech_recognition as sr
 from gtts import gTTS 
 import base64
 import io  
+import tempfile  # NEW: For robust disk-spooling
 from pydub import AudioSegment  # NEW: For audio transcoding
 from streamlit_mic_recorder import mic_recorder 
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
@@ -80,11 +81,11 @@ enable_voice_feedback = st.sidebar.checkbox("Enable Neural Read-Out", value=True
 if 'voice_data' not in st.session_state: st.session_state['voice_data'] = ""
 final_input = ""
 
-# --- 6. INPUT AREA (TRANSCODING ENABLED) ---
+# --- 6. INPUT AREA (ROBUST TRANSCODING) ---
 st.divider()
 if upload_method == "Voice Command":
     st.subheader("🎤 Voice-to-Interlock Ingestion")
-    st.info("Click the button and speak. The system will transcode and process your voice signal.")
+    st.info("Click to Record and speak clearly into your microphone.")
     
     audio_file = mic_recorder(
         start_prompt="🔴 Start Recording",
@@ -94,26 +95,31 @@ if upload_method == "Voice Command":
 
     if audio_file:
         try:
-            # 1. Load raw bytes from browser
-            audio_stream = io.BytesIO(audio_file['bytes'])
+            # 1. Create a temporary disk buffer for the incoming signal
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
+                temp_audio.write(audio_file['bytes'])
+                temp_audio_path = temp_audio.name
+
+            # 2. Transcode bitstream to processable WAV via FFmpeg
+            audio_segment = AudioSegment.from_file(temp_audio_path)
+            audio_segment.export(temp_audio_path, format="wav")
             
-            # 2. Transcode WebM/Ogg to WAV using pydub
-            audio_segment = AudioSegment.from_file(audio_stream)
-            wav_io = io.BytesIO()
-            audio_segment.export(wav_io, format="wav")
-            wav_io.seek(0)
-            
-            # 3. Use SpeechRecognition on the transcoded WAV
+            # 3. Use SpeechRecognition on the stabilized signal
             r = sr.Recognizer()
-            with sr.AudioFile(wav_io) as source:
+            with sr.AudioFile(temp_audio_path) as source:
                 audio_data = r.record(source)
                 st.session_state['voice_data'] = r.recognize_google(audio_data)
-                st.success("✅ Voice Signal Transcoded Successfully!")
+                st.success("✅ Voice Signal Stabilized & Captured!")
+            
+            # 4. Clean up temporary storage (Engineering discipline)
+            os.remove(temp_audio_path)
+            
         except Exception as e:
             st.error(f"Signal Transcoding Error: {e}")
+            st.info("Ensure packages.txt contains 'ffmpeg' and reboot the app if error persists.")
                 
     if st.session_state['voice_data']:
-        final_input = st.text_area("Recognized Speech:", value=st.session_state['voice_data'])
+        final_input = st.text_area("Recognized Speech Signal:", value=st.session_state['voice_data'])
 
 elif upload_method == "Web URL Scraper":
     st.subheader("🌐 Web Intelligence Ingestion")
