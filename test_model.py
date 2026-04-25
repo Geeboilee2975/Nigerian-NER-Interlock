@@ -9,9 +9,7 @@ import speech_recognition as sr
 from gtts import gTTS 
 import base64
 import io  
-import tempfile  # For robust disk-spooling
-from pydub import AudioSegment  # For audio transcoding
-from streamlit_mic_recorder import mic_recorder 
+from streamlit_mic_recorder import mic_recorder, speech_to_text # Added speech_to_text
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
 
 # 1. PAGE SETUP
@@ -81,51 +79,23 @@ enable_voice_feedback = st.sidebar.checkbox("Enable Neural Read-Out", value=True
 if 'voice_data' not in st.session_state: st.session_state['voice_data'] = ""
 final_input = ""
 
-# --- 6. INPUT AREA (HEURISTIC TRANSCODING) ---
+# --- 6. INPUT AREA (CLIENT-SIDE EDGE PROCESSING) ---
 st.divider()
 if upload_method == "Voice Command":
     st.subheader("🎤 Voice-to-Interlock Ingestion")
-    st.info("Click to Record and speak clearly into your microphone.")
+    st.info("Click the microphone and speak. Processing occurs via Client-Side Web Speech API.")
     
-    audio_file = mic_recorder(
+    # NEW: Browser-native speech recognition (Bypasses FFmpeg and server issues)
+    text_captured = speech_to_text(
+        language='en', 
         start_prompt="🔴 Start Recording",
         stop_prompt="⏹️ Stop & Process",
-        key='web_recorder'
+        key='browser_native_stt'
     )
 
-    if audio_file:
-        try:
-            if len(audio_file['bytes']) > 0:
-                # 1. Spool bitstream to disk
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
-                    temp_audio.write(audio_file['bytes'])
-                    temp_audio_path = temp_audio.name
-
-                # 2. HEURISTIC PATH DISCOVERY: Finds FFmpeg anywhere on the server
-                possible_paths = ["/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg", "ffmpeg"]
-                for p in possible_paths:
-                    if os.path.exists(p) or p == "ffmpeg":
-                        AudioSegment.converter = p
-                        break
-                
-                # 3. Transcode and Stabilize Signal
-                audio_segment = AudioSegment.from_file(temp_audio_path)
-                audio_segment.export(temp_audio_path, format="wav")
-                
-                # 4. Use SpeechRecognition
-                r = sr.Recognizer()
-                with sr.AudioFile(temp_audio_path) as source:
-                    audio_data = r.record(source)
-                    st.session_state['voice_data'] = r.recognize_google(audio_data)
-                    st.success("✅ Neural Signal Synchronized!")
-                
-                os.remove(temp_audio_path)
-            else:
-                st.warning("⚠️ Received null audio signal. Please record again.")
-                
-        except Exception as e:
-            st.error(f"Signal Transcoding Error: {e}")
-            st.info("Ensure packages.txt contains 'ffmpeg' in the root folder.")
+    if text_captured:
+        st.session_state['voice_data'] = text_captured
+        st.success("✅ Voice Signal Successfully Decoded!")
                 
     if st.session_state['voice_data']:
         final_input = st.text_area("Recognized Speech Signal:", value=st.session_state['voice_data'])
