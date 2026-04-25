@@ -9,7 +9,7 @@ import speech_recognition as sr
 from gtts import gTTS 
 import base64
 import io  
-from streamlit_mic_recorder import mic_recorder, speech_to_text # Added speech_to_text
+from streamlit_mic_recorder import mic_recorder, speech_to_text 
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
 
 # 1. PAGE SETUP
@@ -79,23 +79,43 @@ enable_voice_feedback = st.sidebar.checkbox("Enable Neural Read-Out", value=True
 if 'voice_data' not in st.session_state: st.session_state['voice_data'] = ""
 final_input = ""
 
-# --- 6. INPUT AREA (CLIENT-SIDE EDGE PROCESSING) ---
+# --- 6. INPUT AREA (MULTILINGUAL EDGE PROCESSING) ---
 st.divider()
 if upload_method == "Voice Command":
-    st.subheader("🎤 Voice-to-Interlock Ingestion")
-    st.info("Click the microphone and speak. Processing occurs via Client-Side Web Speech API.")
+    st.subheader("🎤 Multilingual Voice-to-Interlock Ingestion")
     
-    # NEW: Browser-native speech recognition (Bypasses FFmpeg and server issues)
+    # NEW: Dialect Selector for the Voice Engine
+    dialect = st.selectbox("Select Voice Dialect for Recognition:", [
+        "English (Nigeria)", 
+        "Yoruba", 
+        "Igbo", 
+        "Hausa", 
+        "Nigerian Pidgin"
+    ])
+    
+    # Mapping dialects to BCP-47 Language Tags
+    lang_map = {
+        "English (Nigeria)": "en-NG",
+        "Yoruba": "yo-NG",
+        "Igbo": "ig-NG",
+        "Hausa": "ha-NG",
+        "Nigerian Pidgin": "pcm-NG"
+    }
+    
+    selected_lang = lang_map[dialect]
+    st.info(f"Acoustic Engine calibrated for: **{dialect}** ({selected_lang})")
+    
+    # Browser-native speech recognition with dynamic language switching
     text_captured = speech_to_text(
-        language='en', 
-        start_prompt="🔴 Start Recording",
+        language=selected_lang, 
+        start_prompt=f"🔴 Speak in {dialect}",
         stop_prompt="⏹️ Stop & Process",
-        key='browser_native_stt'
+        key='browser_native_stt_multilingual'
     )
 
     if text_captured:
         st.session_state['voice_data'] = text_captured
-        st.success("✅ Voice Signal Successfully Decoded!")
+        st.success(f"✅ {dialect} Signal Decoded!")
                 
     if st.session_state['voice_data']:
         final_input = st.text_area("Recognized Speech Signal:", value=st.session_state['voice_data'])
