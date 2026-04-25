@@ -9,8 +9,8 @@ import speech_recognition as sr
 from gtts import gTTS 
 import base64
 import io  
-import tempfile  # NEW: For robust disk-spooling
-from pydub import AudioSegment  # NEW: For audio transcoding
+import tempfile  # For robust disk-spooling
+from pydub import AudioSegment  # For audio transcoding
 from streamlit_mic_recorder import mic_recorder 
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
 
@@ -23,6 +23,7 @@ st.markdown("### **Electronic & Computer Engineering - Neural Phonetic Interface
 @st.cache_resource 
 def load_nigerian_model():
     try:
+        # Repository updated to your Hugging Face ID
         repo_id = "gbolahan219/Nigerian-NER-Model" 
         tokenizer = AutoTokenizer.from_pretrained(repo_id)
         model = AutoModelForTokenClassification.from_pretrained(repo_id)
@@ -81,7 +82,7 @@ enable_voice_feedback = st.sidebar.checkbox("Enable Neural Read-Out", value=True
 if 'voice_data' not in st.session_state: st.session_state['voice_data'] = ""
 final_input = ""
 
-# --- 6. INPUT AREA (ROBUST TRANSCODING) ---
+# --- 6. INPUT AREA (INDUSTRIAL TRANSCODING) ---
 st.divider()
 if upload_method == "Voice Command":
     st.subheader("🎤 Voice-to-Interlock Ingestion")
@@ -95,28 +96,35 @@ if upload_method == "Voice Command":
 
     if audio_file:
         try:
-            # 1. Create a temporary disk buffer for the incoming signal
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
-                temp_audio.write(audio_file['bytes'])
-                temp_audio_path = temp_audio.name
+            # SAFETY CHECK: Ensure valid signal length
+            if len(audio_file['bytes']) > 0:
+                # 1. Create a temporary disk buffer
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
+                    temp_audio.write(audio_file['bytes'])
+                    temp_audio_path = temp_audio.name
 
-            # 2. Transcode bitstream to processable WAV via FFmpeg
-            audio_segment = AudioSegment.from_file(temp_audio_path)
-            audio_segment.export(temp_audio_path, format="wav")
-            
-            # 3. Use SpeechRecognition on the stabilized signal
-            r = sr.Recognizer()
-            with sr.AudioFile(temp_audio_path) as source:
-                audio_data = r.record(source)
-                st.session_state['voice_data'] = r.recognize_google(audio_data)
-                st.success("✅ Voice Signal Stabilized & Captured!")
-            
-            # 4. Clean up temporary storage (Engineering discipline)
-            os.remove(temp_audio_path)
-            
+                # 2. EXPLICIT PATH MAPPING: Crucial for Streamlit Cloud FFmpeg
+                AudioSegment.converter = "/usr/bin/ffmpeg" 
+                
+                # 3. Transcode bitstream to processable WAV
+                audio_segment = AudioSegment.from_file(temp_audio_path)
+                audio_segment.export(temp_audio_path, format="wav")
+                
+                # 4. Use SpeechRecognition on the stabilized signal
+                r = sr.Recognizer()
+                with sr.AudioFile(temp_audio_path) as source:
+                    audio_data = r.record(source)
+                    st.session_state['voice_data'] = r.recognize_google(audio_data)
+                    st.success("✅ Voice Signal Stabilized & Captured!")
+                
+                # 5. Clean up temporary storage
+                os.remove(temp_audio_path)
+            else:
+                st.warning("⚠️ No audio signal detected. Please try again.")
+                
         except Exception as e:
             st.error(f"Signal Transcoding Error: {e}")
-            st.info("Ensure packages.txt contains 'ffmpeg' and reboot the app if error persists.")
+            st.info("Technical Detail: The system is mapping the FFmpeg binary at /usr/bin/ffmpeg.")
                 
     if st.session_state['voice_data']:
         final_input = st.text_area("Recognized Speech Signal:", value=st.session_state['voice_data'])
