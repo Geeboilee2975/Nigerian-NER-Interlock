@@ -46,25 +46,28 @@ def speak_results_neural(text):
     except Exception as e:
         st.warning(f"Audio Synthesis Warning: {e}")
 
-# 4. ENTITY CONFIGURATION
+# 4. REDUCED ENTITY CONFIGURATION (PER, LOC, ORG, DATE ONLY)
 entity_config = {
-    "PER": {"name": "PERSON", "color": "#FF4B4B"}, "GPE": {"name": "GPE (STATE/CITY)", "color": "#7D3C98"},
-    "ORG": {"name": "ORGANIZATION", "color": "#FFD700"}, "DATE": {"name": "DATE/TIME", "color": "#28A745"},
-    "CARDINAL": {"name": "CARDINAL", "color": "#00CED1"}, "EVENT": {"name": "EVENT", "color": "#FF8C00"},
-    "FAC": {"name": "FACILITY", "color": "#4682B4"}, "LANGUAGE": {"name": "LANGUAGE", "color": "#6A5ACD"},
-    "LAW": {"name": "LAW/LEGAL", "color": "#8B4513"}, "ORDINAL": {"name": "ORDINAL", "color": "#D2691E"},
-    "PERCENT": {"name": "PERCENTAGE", "color": "#FF1493"}, "PRODUCT": {"name": "PRODUCT", "color": "#008080"},
-    "QUANTITY": {"name": "QUANTITY", "color": "#708090"}, "WORK_OF_ART": {"name": "WORK OF ART", "color": "#DC143C"},
-    "LOC": {"name": "LOCATION", "color": "#1C83E1"}, "MONEY": {"name": "CURRENCY", "color": "#32CD32"},
-    "TIME": {"name": "TIME", "color": "#ADFF2F"}, "NORP": {"name": "NORP (GROUP)", "color": "#DEB887"}
+    "PER": {"name": "PERSON", "color": "#FF4B4B"}, 
+    "LOC": {"name": "LOCATION", "color": "#1C83E1"},
+    "ORG": {"name": "ORGANIZATION", "color": "#FFD700"}, 
+    "DATE": {"name": "DATE/TIME", "color": "#28A745"}
 }
 
+# REDUCED LABEL MAP (Filters all other classifications to default "O")
 label_map = {
-    "LABEL_1": "PER", "LABEL_2": "PER", "LABEL_3": "ORG", "LABEL_4": "ORG",
-    "LABEL_5": "GPE", "LABEL_6": "GPE", "LABEL_7": "DATE", "LABEL_8": "CARDINAL",
-    "LABEL_9": "EVENT", "LABEL_10": "FAC", "LABEL_11": "LANGUAGE", "LABEL_12": "LAW",
-    "LABEL_13": "ORDINAL", "LABEL_14": "PERCENT", "LABEL_15": "PRODUCT",
-    "LABEL_16": "QUANTITY", "LABEL_17": "WORK_OF_ART", "LABEL_18": "LOC"
+    "LABEL_1": "PER", 
+    "LABEL_2": "PER", 
+    "LABEL_3": "ORG", 
+    "LABEL_4": "ORG",
+    "LABEL_7": "DATE", 
+    "LABEL_18": "LOC",
+    # Added fallback strings just in case the pipeline resolves the label names directly
+    "B-PER": "PER", "I-PER": "PER",
+    "B-LOC": "LOC", "I-LOC": "LOC",
+    "B-ORG": "ORG", "I-ORG": "ORG",
+    "B-DATE": "DATE", "I-DATE": "DATE",
+    "PER": "PER", "LOC": "LOC", "ORG": "ORG", "DATE": "DATE"
 }
 
 # 5. SIDEBAR
@@ -164,6 +167,8 @@ if final_input:
             start_time = time.time()
             results = nlp_pipe(final_input)
             latency = time.time() - start_time
+            
+            # Filters entities to make sure they match our core 4 entities and cross the confidence threshold
             valid_results = [res for res in results if label_map.get(res['entity_group'], "O") != "O" and res['score'] >= threshold]
             
             st.divider()
