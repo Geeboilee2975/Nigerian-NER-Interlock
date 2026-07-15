@@ -60,8 +60,11 @@ label_map = {
     "LABEL_2": "PER", 
     "LABEL_3": "ORG", 
     "LABEL_4": "ORG",
+    "LABEL_5": "LOC",  
+    "LABEL_6": "LOC",  
     "LABEL_7": "DATE", 
-    "LABEL_18": "LOC",
+    "LABEL_8": "DATE",
+    
     # Added fallback strings just in case the pipeline resolves the label names directly
     "B-PER": "PER", "I-PER": "PER",
     "B-LOC": "LOC", "I-LOC": "LOC",
