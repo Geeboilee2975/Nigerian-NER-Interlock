@@ -10,3 +10,13 @@ torchvision
 torchaudio
 streamlit-mic-recorder
 pydub
+
+
+##SOFT ENVIRONMENT PARAMETERS
+torch>=2.0.0
+transformers>=4.35.0
+datasets>=2.14.0
+evaluate>=0.4.0
+seqeval>=1.2.2
+pandas>=1.5.0
+numpy>=1.24.0
